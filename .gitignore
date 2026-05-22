@@ -235,3 +235,21 @@ buildNumber.properties
 .classpath
 
 # End of https://www.toptal.com/developers/gitignore/api/maven,java,intellij+all,eclipse
+
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Editors / agents ###
+.claude/
+.zed/
+
+### Local config / secrets ###
+*.env
+application-local.yaml
+application-local.yml
+
+### Runtime artifacts ###
+# Phase 10 attachment storage (if filesystem path is chosen over DB BLOB)
+uploads/
