@@ -59,9 +59,12 @@ class JwtServiceTest {
     @Test
     void tamperedSignatureThrows() {
         String token = normalService.issue(newUser());
-        // Flip the last char of the signature segment to break the HMAC.
-        String tampered = token.substring(0, token.length() - 1)
-                + (token.charAt(token.length() - 1) == 'A' ? 'B' : 'A');
+        // Flip a character in the middle of the signature to ensure it breaks the HMAC
+        // and actually alters the decoded bytes (the last base64 character might have ignored bits).
+        int flipIndex = token.length() - 10;
+        String tampered = token.substring(0, flipIndex)
+                + (token.charAt(flipIndex) == 'A' ? 'B' : 'A')
+                + token.substring(flipIndex + 1);
         assertThrows(JwtException.class, () -> normalService.parse(tampered));
     }
 

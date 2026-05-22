@@ -18,11 +18,16 @@ import java.util.Map;
 
 /**
  * Translates service- and framework-level exceptions into the HTTP
- * status codes the README contract expects. Phase 4 will add an
- * {@code ObjectOptimisticLockingFailureException} → 409 handler here.
+ * status codes the README contract expects.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> optimisticLock(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("ticket was modified concurrently; reload and retry"));
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> notFound(NotFoundException ex) {
