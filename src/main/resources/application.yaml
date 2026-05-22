@@ -17,8 +17,27 @@ spring:
       ddl-auto: update
   sql:
     init:
-      mode: always
+      # JPA ddl-auto: update owns the schema during iteration; schema.sql and
+      # data.sql stay inert until populated near submission per BUILD_PLAN.
+      mode: never
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+
+# JWT signing parameters. The secret here is demo-only — see run.md. HS256
+# requires >= 32 characters (256 bits); JwtProperties enforces this at startup.
+issueflow:
+  jwt:
+    secret: "dev-secret-change-me-please-32chars-minimum-xx"
+    expires-in-seconds: 3600
+    issuer: "issueflow"
+  # ADMIN seed used by AdminSeeder on first boot. NOT loaded under the test
+  # profile (the seeder is @Profile("!test")). Demo-only credentials —
+  # documented in run.md.
+  seed:
+    admin:
+      username: "admin"
+      password: "admin"
+      email: "admin@issueflow.local"
+      full-name: "Demo Admin"

@@ -1,3 +1,3 @@
-CREATE TABLE IF NOT EXISTS task (
-                                    description VARCHAR(64) NOT NULL,
-    completed   VARCHAR(30) NOT NULL);
+-- Intentionally empty during iteration. JPA `ddl-auto: update` owns the schema.
+-- Will be populated with the curated DDL near submission per BUILD_PLAN.
+-- Spring's script initializer rejects a literally-empty file, so this comment stays.

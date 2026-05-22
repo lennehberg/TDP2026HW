@@ -1,4 +1,11 @@
-package com.att.tdp.issueflow.common.exceptions;
+package com.att.tdp.issueflow.common.exception;
 
-public class NotFoundException {
+/**
+ * Thrown by services when a referenced entity id does not resolve.
+ * Mapped to HTTP 404 by {@link GlobalExceptionHandler}.
+ */
+public class NotFoundException extends RuntimeException {
+    public NotFoundException(String message) {
+        super(message);
+    }
 }

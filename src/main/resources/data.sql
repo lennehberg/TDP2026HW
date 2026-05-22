@@ -1,3 +1,3 @@
-INSERT INTO task ( description, completed) VALUES
-                                               ( 'description1', 'completed'),
-                                               ('description2', 'completed');
+-- Intentionally empty during iteration. Seed data (e.g. demo ADMIN user) will
+-- land in Phase 2 per BUILD_PLAN. This comment keeps the file non-empty so
+-- Spring's script initializer does not throw on boot.

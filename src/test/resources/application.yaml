@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: issueflow
+  # Activates the "test" profile so AdminSeeder (@Profile("!test")) is skipped
+  # and tests start against an empty users table.
+  profiles:
+    active: test
   datasource:
     url: jdbc:h2:mem:db;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -11,7 +15,9 @@ spring:
     driverClassName: org.h2.Driver
   sql:
     init:
-      platform: mssql
+      # H2 is embedded so `embedded` mode would auto-run schema.sql; override
+      # to `never` so tests rely entirely on JPA ddl-auto.
+      mode: never
   h2:
     console:
       enabled: true
@@ -24,3 +30,10 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+
+# Distinct test secret so a leak in either env never affects the other.
+issueflow:
+  jwt:
+    secret: "test-only-secret-do-not-use-anywhere-real-pls"
+    expires-in-seconds: 3600
+    issuer: "issueflow-test"
