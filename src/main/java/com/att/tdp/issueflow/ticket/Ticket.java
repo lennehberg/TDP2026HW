@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import java.time.Instant;
 
 /**
@@ -25,9 +27,14 @@ import java.time.Instant;
  * {@code ObjectOptimisticLockingFailureException}, which the global handler
  * maps to 409 Conflict.
  * <p>
- * Soft delete: {@code deletedAt} lands ahead of Phase 8, which will add
- * {@code @SQLRestriction("deleted_at IS NULL")} so every standard query
- * auto-filters. Until then, soft-deleted tickets remain visible.
+ * Phase 8 added {@code @SQLRestriction("deleted_at IS NULL")} so every
+ * standard {@code JpaRepository} query auto-filters soft-deleted rows.
+ * Listings and restore of soft-deleted tickets go through the native
+ * {@code findAllDeletedByProjectId} / {@code findByIdIncludingDeleted}
+ * finders on {@link TicketRepository}, which bypass the restriction.
+ * Notable downstream effect: the Phase 7 blocker-status fetch silently
+ * drops soft-deleted blockers, so a soft-deleted blocker effectively
+ * unblocks its dependent (correct per spec; documented in {@code run.md}).
  * <p>
  * {@code isOverdue} is owned by the Phase 13 scheduler (sets it,
  * actor=SYSTEM) and the manual {@code priority} PATCH path (clears it,
@@ -40,6 +47,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "tickets")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -84,4 +92,10 @@ public class Ticket extends BaseEntity {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    @Column(name = "last_manual_priority_change_at")
+    private Instant lastManualPriorityChangeAt;
+
+    @Column(name = "last_escalated_at")
+    private Instant lastEscalatedAt;
 }

@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import java.time.Instant;
 
 /**
@@ -19,10 +21,11 @@ import java.time.Instant;
  * is deliberately omitted ({@code BaseEntity} carries no {@code @Version});
  * only Ticket and Comment opt in per the build plan.
  * <p>
- * {@code deletedAt} lands ahead of Phase 8, which will add
- * {@code @SQLRestriction("deleted_at IS NULL")} so every standard
- * {@code JpaRepository} query auto-filters soft-deleted rows. Until then,
- * soft-deleted projects remain visible via the standard finders.
+ * Phase 8 added {@code @SQLRestriction("deleted_at IS NULL")} so every
+ * standard {@code JpaRepository} query auto-filters soft-deleted rows.
+ * Listings and restore of soft-deleted projects go through the native
+ * {@code findAllDeleted} / {@code findByIdIncludingDeleted} finders on
+ * {@link ProjectRepository}, which bypass the restriction.
  * <p>
  * {@code ownerId} is kept as a raw {@code Long} (no {@code @ManyToOne}) to
  * match {@code User}'s convention and keep DTOs flat; owner-exists validation
@@ -30,6 +33,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "projects")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor

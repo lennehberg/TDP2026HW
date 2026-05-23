@@ -7,6 +7,7 @@ import com.att.tdp.issueflow.ticket.dto.UpdateTicketRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,9 +29,23 @@ public class TicketController {
         return ticketService.listByProject(projectId);
     }
 
+    // Phase 8 — declared before /{ticketId} for readability. projectId is
+    // required (mirrors GET /tickets); Spring binder yields 400 if absent.
+    @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<TicketResponse> listDeleted(@RequestParam Long projectId) {
+        return ticketService.listDeletedByProject(projectId);
+    }
+
     @GetMapping("/{ticketId}")
     public TicketResponse getById(@PathVariable Long ticketId) {
         return ticketService.getById(ticketId);
+    }
+
+    @PostMapping("/{ticketId}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public TicketResponse restore(@PathVariable Long ticketId) {
+        return ticketService.restore(ticketId);
     }
 
     @PatchMapping("/{ticketId}")

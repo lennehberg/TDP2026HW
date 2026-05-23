@@ -10,6 +10,8 @@ import com.att.tdp.issueflow.project.ProjectRepository;
 import com.att.tdp.issueflow.ticket.dto.CreateTicketRequest;
 import com.att.tdp.issueflow.ticket.dto.TicketResponse;
 import com.att.tdp.issueflow.ticket.dto.UpdateTicketRequest;
+import com.att.tdp.issueflow.user.Role;
+import com.att.tdp.issueflow.user.User;
 import com.att.tdp.issueflow.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,44 @@ public class TicketService {
     private final AuditService auditService;
     private final TicketDependencyRepository dependencyRepository;
 
+    /**
+     * Phase 12 — auto-assign per §3.8.
+     * <p>
+     * Scope: <i>any</i> DEVELOPER in the system, scored by their non-DONE
+     * workload <i>in this project</i>. The data model has no concept of
+     * "project membership" beyond the owner, so "DEVELOPER in the project"
+     * effectively reduces to "DEVELOPER whose workload we measure inside this
+     * project." A developer who has never touched the project gets score 0
+     * and is therefore a valid (preferred) candidate — the only sensible read
+     * given the model.
+     * <p>
+     * Tie-break: oldest registrant wins. The candidate list is pre-sorted by
+     * {@code createdAt ASC}, and the strict {@code <} comparison below means
+     * an equal-workload later registrant cannot displace the running winner.
+     */
+    private void autoAssign(Ticket ticket) {
+        List<User> developers = userRepository.findAllByRoleOrderByCreatedAtAsc(Role.DEVELOPER);
+        if (developers.isEmpty()) return;
+
+        User bestCandidate = null;
+        long lowestWorkload = Long.MAX_VALUE;
+
+        for (User dev : developers) {
+            long workload = ticketRepository.countActiveTicketsForUserInProject(
+                    ticket.getProjectId(), dev.getId());
+            if (workload < lowestWorkload) {
+                lowestWorkload = workload;
+                bestCandidate = dev;
+            }
+        }
+
+        // Unreachable when developers is non-empty (the first iteration always
+        // beats Long.MAX_VALUE), but kept defensive against future refactors.
+        if (bestCandidate != null) {
+            ticket.setAssigneeId(bestCandidate.getId());
+            auditService.recordSystemAction(AuditAction.AUTO_ASSIGN, EntityType.TICKET, ticket.getId());
+        }
+    }
 
     private List<TicketStatus> blockerStatuses(Ticket t, TicketStatus nextStatus) {
         List<TicketStatus> blockerStatuses;
@@ -83,12 +123,19 @@ public class TicketService {
     }
 
     private void applyPriority(Ticket t, JsonNullable<Priority> priority) {
+        // Per CLAUDE.md: the Phase 13 reset rule keys on whether `priority` was
+        // SENT, not whether its value changed. A PATCH that re-asserts the
+        // current priority still clears isOverdue and bumps the manual-change
+        // timestamp — that's the user's signal that they're re-owning the
+        // priority, and the next escalation cycle should re-evaluate from
+        // there.
         if (priority.isPresent()) {
             if (priority.get() == null) {
                 throw new BadRequestException("Priority cannot be null");
             }
             t.setPriority(priority.get());
-            // TODO Phase 13: clear isOverdue + reset escalation state
+            t.setOverdue(false);
+            t.setLastManualPriorityChangeAt(Instant.now());
         }
     }
 
@@ -135,8 +182,9 @@ public class TicketService {
                 .build());
 
         auditService.recordUserAction(AuditAction.CREATE, EntityType.TICKET, saved.getId());
-        // TODO Phase 12: if (req.assigneeId() == null) auto-assign DEVELOPER with lowest workload
-        //                — that path records (AUTO_ASSIGN, TICKET, id) via recordSystemAction.
+        if (req.assigneeId() == null) {
+            autoAssign(saved);
+        }
         return toResponse(saved);
     }
 
@@ -188,6 +236,40 @@ public class TicketService {
         // forbid archiving completed work; DONE-immutable is about PATCH).
         t.setDeletedAt(Instant.now());
         auditService.recordUserAction(AuditAction.DELETE, EntityType.TICKET, id);
+    }
+
+    /**
+     * Phase 8: ADMIN-only listing of soft-deleted tickets within a project.
+     * Mirrors {@link #listByProject} in returning {@code []} for an unknown
+     * project (no pre-check).
+     */
+    @Transactional(readOnly = true)
+    public List<TicketResponse> listDeletedByProject(Long projectId) {
+        return ticketRepository.findAllDeletedByProjectId(projectId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * Phase 8: clears {@code deletedAt} and audits a {@code RESTORE} row.
+     * Does NOT validate that the parent project is still live — a ticket
+     * can be restored even if its project is soft-deleted (the restored
+     * ticket will reference a project hidden from standard finders, but
+     * the audit chain stays consistent). Trade-off documented in
+     * {@code run.md} as the chosen §4d-(a) variant.
+     */
+    @Transactional
+    public TicketResponse restore(Long id) {
+        Ticket t = ticketRepository.findByIdIncludingDeleted(id)
+                .orElseThrow(() -> new NotFoundException("ticket " + id + " not found"));
+        if (t.getDeletedAt() == null) {
+            throw new ConflictException("ticket " + id + " is not deleted");
+        }
+        t.setDeletedAt(null);
+        // Status is unchanged on restore. A DONE ticket comes back DONE and
+        // remains DONE-immutable; nothing else here needs to handle that.
+        auditService.recordUserAction(AuditAction.RESTORE, EntityType.TICKET, id);
+        return toResponse(t);
     }
 
     private TicketResponse toResponse(Ticket t) {

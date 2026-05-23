@@ -12,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -72,6 +73,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> unreadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse("malformed request body"));
+    }
+
+    // Spring throws this when the multipart payload exceeds
+    // spring.servlet.multipart.max-file-size (10 MB, set in application.yaml).
+    // Map to 400 with the standard ErrorResponse envelope so attachment-upload
+    // failures use the same shape as every other validation error.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> tooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("file exceeds the 10 MB upload limit"));
     }
 
     // Safety net for the race window between existsBy*() pre-checks and INSERT;
