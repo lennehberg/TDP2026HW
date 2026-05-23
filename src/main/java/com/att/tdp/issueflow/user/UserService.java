@@ -1,5 +1,8 @@
 package com.att.tdp.issueflow.user;
 
+import com.att.tdp.issueflow.audit.AuditAction;
+import com.att.tdp.issueflow.audit.AuditService;
+import com.att.tdp.issueflow.audit.EntityType;
 import com.att.tdp.issueflow.common.exception.ConflictException;
 import com.att.tdp.issueflow.common.exception.NotFoundException;
 import com.att.tdp.issueflow.user.dto.CreateUserRequest;
@@ -20,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     @Transactional
     public UserResponse create(CreateUserRequest req) {
@@ -39,6 +43,7 @@ public class UserService {
                 .role(req.role())
                 .passwordHash(passwordEncoder.encode(req.password()))
                 .build());
+        auditService.recordUserAction(AuditAction.CREATE, EntityType.USER, saved.getId());
         return toResponse(saved);
     }
 
@@ -69,6 +74,7 @@ public class UserService {
         if (req.role() != null) {
             u.setRole(req.role());
         }
+        auditService.recordUserAction(AuditAction.UPDATE, EntityType.USER, id);
         return toResponse(u);
     }
 
@@ -79,6 +85,7 @@ public class UserService {
             throw new NotFoundException("user " + id + " not found");
         }
         userRepository.deleteById(id);
+        auditService.recordUserAction(AuditAction.DELETE, EntityType.USER, id);
     }
 
     private UserResponse toResponse(User u) {

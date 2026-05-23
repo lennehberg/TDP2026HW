@@ -29,23 +29,28 @@ public class TicketStatusValidator {
             TicketStatus next,
             List<TicketStatus> blockerStatuses
     ) {
-        // TODO Phase 4 — interesting logic; paused for user.
-        // Rules (checklist order):
-        //   1. current == DONE                    → ConflictException
-        //   2. next == current                    → no-op, return
-        //   3. ordinal(next) < ordinal(current)   → BadRequestException
-        //   4. next == DONE && any blocker not DONE → ConflictException
+        // Rule 1: never green-light any transition from DONE — even DONE → DONE.
+        // DONE-immutable is enforced upstream in TicketService.update, but the
+        // validator stays airtight so future callers (Phase 7 dependency wiring)
+        // can rely on it as a single source of truth.
+        if (current == TicketStatus.DONE) {
+            throw new ConflictException("ticket is DONE and cannot be modified");
+        }
+        // Rule 2: same-status PATCH is a legal no-op.
         if (next == current) {
             return;
         }
-        if (current == TicketStatus.DONE) {
-            throw new ConflictException("Ticket can't be updated if status is already DONE");
-        }
+        // Rule 3: forward-only.
         if (next.ordinal() < current.ordinal()) {
-            throw new BadRequestException("Ticket status cannot be moved to lower category");
+            throw new BadRequestException(
+                    "status cannot move backward: " + current + " → " + next);
         }
-        if (next == TicketStatus.DONE && !blockerStatuses.stream().allMatch(s -> s == TicketStatus.DONE)) {
-            throw new ConflictException("Ticket cannot be marked DONE because blocked by other ticket");
+        // Rule 4: DONE requires every blocker to be DONE (Phase 7 lights this up;
+        // blockerStatuses is always empty in Phase 4).
+        if (next == TicketStatus.DONE
+                && !blockerStatuses.stream().allMatch(s -> s == TicketStatus.DONE)) {
+            throw new ConflictException(
+                    "cannot transition to DONE while blockers are unresolved");
         }
     }
 }

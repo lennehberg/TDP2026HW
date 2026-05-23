@@ -1,6 +1,10 @@
 package com.att.tdp.issueflow.ticket;
 
+import com.att.tdp.issueflow.audit.AuditAction;
+import com.att.tdp.issueflow.audit.AuditService;
+import com.att.tdp.issueflow.audit.EntityType;
 import com.att.tdp.issueflow.common.exception.BadRequestException;
+import com.att.tdp.issueflow.common.exception.ConflictException;
 import com.att.tdp.issueflow.common.exception.NotFoundException;
 import com.att.tdp.issueflow.project.ProjectRepository;
 import com.att.tdp.issueflow.ticket.dto.CreateTicketRequest;
@@ -10,6 +14,7 @@ import com.att.tdp.issueflow.user.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,63 +29,82 @@ public class TicketService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final TicketStatusValidator statusValidator;
+    private final AuditService auditService;
+    private final TicketDependencyRepository dependencyRepository;
 
-    private void ApplyStatus(Ticket t, UpdateTicketRequest req) {
-        if (req.status() != null && req.status().isPresent()) {
-            TicketStatus nextStatus = req.status().get();
 
+    private List<TicketStatus> blockerStatuses(Ticket t, TicketStatus nextStatus) {
+        List<TicketStatus> blockerStatuses;
+        if (nextStatus == TicketStatus.DONE) {
+            List<Long> blockerIds = dependencyRepository.findAllByTicketId(t.getId())
+                                    .stream()
+                                    .map(TicketDependency::getBlockedById)
+                                    .toList();
+            blockerStatuses = blockerIds.isEmpty() ? List.of()
+                                                    :
+                                ticketRepository.findStatusesByIdIn(blockerIds);
+
+        } else {
+            blockerStatuses = List.of();
+        }
+        return blockerStatuses;
+    }
+
+    private void applyStatus(Ticket t, JsonNullable<TicketStatus> status) {
+        if (status.isPresent()) {
+            TicketStatus nextStatus = status.get();
             if (nextStatus == null) {
                 throw new BadRequestException("Ticket status cannot be null");
             }
-
-            statusValidator.validateTransition(t.getStatus(), nextStatus, List.of());
+            statusValidator.validateTransition(t.getStatus(), nextStatus,
+                    blockerStatuses(t,  nextStatus));
             t.setStatus(nextStatus);
         }
     }
 
-    private void ApplyTitle(Ticket t, UpdateTicketRequest req) {
-        if (req.title() != null && req.title().isPresent()) {
-            String title = req.title().get();
-            if (title == null || title.isBlank()) {
+    private void applyTitle(Ticket t, JsonNullable<String> title) {
+        if (title.isPresent()) {
+            String value = title.get();
+            if (value == null || value.isBlank()) {
                 throw new BadRequestException("Title cannot be empty");
             }
-            t.setTitle(title);
+            t.setTitle(value);
         }
     }
 
-    private void ApplyDescription(Ticket t, UpdateTicketRequest req) {
-        if (req.description() != null && req.description().isPresent()) {
-            String description = req.description().get();
-            if (description == null || description.isBlank()) {
+    private void applyDescription(Ticket t, JsonNullable<String> description) {
+        if (description.isPresent()) {
+            String value = description.get();
+            if (value == null || value.isBlank()) {
                 throw new BadRequestException("Description cannot be empty");
             }
-            t.setDescription(description);
+            t.setDescription(value);
         }
     }
 
-    private void ApplyPriority(Ticket t, UpdateTicketRequest req) {
-        if (req.priority() != null && req.priority().isPresent()) {
-            if (req.priority().get() == null) {
+    private void applyPriority(Ticket t, JsonNullable<Priority> priority) {
+        if (priority.isPresent()) {
+            if (priority.get() == null) {
                 throw new BadRequestException("Priority cannot be null");
             }
-            t.setPriority(req.priority().get());
+            t.setPriority(priority.get());
             // TODO Phase 13: clear isOverdue + reset escalation state
         }
     }
 
-    private void ApplyAsigneeId(Ticket t, UpdateTicketRequest req) {
-        if (req.assigneeId() != null && req.assigneeId().isPresent()) {
-            Long assigneeId = req.assigneeId().get();
-            if (assigneeId != null && !userRepository.existsById(assigneeId)) {
-                throw new BadRequestException("assignee " + assigneeId + " not found");
+    private void applyAssigneeId(Ticket t, JsonNullable<Long> assigneeId) {
+        if (assigneeId.isPresent()) {
+            Long value = assigneeId.get();
+            if (value != null && !userRepository.existsById(value)) {
+                throw new BadRequestException("assignee " + value + " not found");
             }
-            t.setAssigneeId(assigneeId);
+            t.setAssigneeId(value);
         }
     }
 
-    private void ApplyDueDate(Ticket t, UpdateTicketRequest req) {
-        if (req.dueDate() != null && req.dueDate().isPresent()) {
-            t.setDueDate(req.dueDate().get());
+    private void applyDueDate(Ticket t, JsonNullable<Instant> dueDate) {
+        if (dueDate.isPresent()) {
+            t.setDueDate(dueDate.get());
         }
     }
 
@@ -110,8 +134,9 @@ public class TicketService {
                 .isOverdue(false)
                 .build());
 
-        // TODO Phase 6: auditService.record(CREATE, TICKET, saved.getId(), currentUser, USER)
+        auditService.recordUserAction(AuditAction.CREATE, EntityType.TICKET, saved.getId());
         // TODO Phase 12: if (req.assigneeId() == null) auto-assign DEVELOPER with lowest workload
+        //                — that path records (AUTO_ASSIGN, TICKET, id) via recordSystemAction.
         return toResponse(saved);
     }
 
@@ -119,7 +144,9 @@ public class TicketService {
     public TicketResponse getById(Long id) {
         return ticketRepository.findById(id)
                 .map(this::toResponse)
-                .orElseThrow(() -> new NotFoundException("ticket " + id + " not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        "ticket " + id + " not found"
+                ));
     }
 
     @Transactional(readOnly = true)
@@ -138,17 +165,17 @@ public class TicketService {
                 .orElseThrow(() -> new NotFoundException("ticket " + id + " not found"));
 
         if (t.getStatus() == TicketStatus.DONE) {
-            throw new com.att.tdp.issueflow.common.exception.ConflictException("ticket " + id + " is DONE and cannot be modified");
+            throw new ConflictException("ticket " + id + " is DONE and cannot be modified");
         }
 
-        ApplyStatus(t, req);
-        ApplyTitle(t, req);
-        ApplyDescription(t, req);
-        ApplyPriority(t, req);
-        ApplyAsigneeId(t, req);
-        ApplyDueDate(t, req);
+        applyStatus(t,      orUndefined(req.status()));
+        applyTitle(t,       orUndefined(req.title()));
+        applyDescription(t, orUndefined(req.description()));
+        applyPriority(t,    orUndefined(req.priority()));
+        applyAssigneeId(t,  orUndefined(req.assigneeId()));
+        applyDueDate(t,     orUndefined(req.dueDate()));
 
-        // TODO Phase 6: auditService.record(UPDATE, TICKET, id, currentUser, USER, payload)
+        auditService.recordUserAction(AuditAction.UPDATE, EntityType.TICKET, id);
         return toResponse(t);
     }
 
@@ -160,7 +187,7 @@ public class TicketService {
         // queries auto-filter. DONE tickets ARE deletable (spec doesn't
         // forbid archiving completed work; DONE-immutable is about PATCH).
         t.setDeletedAt(Instant.now());
-        // TODO Phase 6: auditService.record(DELETE, TICKET, id, currentUser, USER)
+        auditService.recordUserAction(AuditAction.DELETE, EntityType.TICKET, id);
     }
 
     private TicketResponse toResponse(Ticket t) {
@@ -176,5 +203,15 @@ public class TicketService {
                 t.getDueDate(),
                 t.isOverdue()
         );
+    }
+
+    /**
+     * Defensive guard: if Jackson somehow hands us a null reference for a
+     * {@code JsonNullable<T>} field (rare, but possible across different
+     * deserialization paths), normalize to {@code undefined()} so the
+     * apply* helpers can use plain {@code .isPresent()}.
+     */
+    private static <T> JsonNullable<T> orUndefined(JsonNullable<T> v) {
+        return v == null ? JsonNullable.undefined() : v;
     }
 }

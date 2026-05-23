@@ -1,5 +1,8 @@
 package com.att.tdp.issueflow.project;
 
+import com.att.tdp.issueflow.audit.AuditAction;
+import com.att.tdp.issueflow.audit.AuditService;
+import com.att.tdp.issueflow.audit.EntityType;
 import com.att.tdp.issueflow.common.exception.BadRequestException;
 import com.att.tdp.issueflow.common.exception.NotFoundException;
 import com.att.tdp.issueflow.project.dto.CreateProjectRequest;
@@ -21,6 +24,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     @Transactional
     public ProjectResponse create(CreateProjectRequest req) {
@@ -34,6 +38,7 @@ public class ProjectService {
                 .description(req.description())
                 .ownerId(req.ownerId())
                 .build());
+        auditService.recordUserAction(AuditAction.CREATE, EntityType.PROJECT, saved.getId());
         return toResponse(saved);
     }
 
@@ -61,6 +66,7 @@ public class ProjectService {
         if (req.description() != null) {
             p.setDescription(req.description());
         }
+        auditService.recordUserAction(AuditAction.UPDATE, EntityType.PROJECT, id);
         return toResponse(p);
     }
 
@@ -68,7 +74,11 @@ public class ProjectService {
     public void delete(Long id) {
         Project p = projectRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("project " + id + " not found"));
+        // Soft delete only — still recorded as DELETE per BUILD_PLAN Phase 6
+        // ("delete is a soft delete, still DELETE"). Phase 8's restore endpoint
+        // will use AuditAction.RESTORE.
         p.setDeletedAt(Instant.now());
+        auditService.recordUserAction(AuditAction.DELETE, EntityType.PROJECT, id);
     }
 
     private ProjectResponse toResponse(Project p) {

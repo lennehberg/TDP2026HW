@@ -39,4 +39,13 @@ class TicketStatusValidatorTest {
     void validateTransition_rejectsDoneWhenBlockersOpen() {
         assertThrows(ConflictException.class, () -> validator.validateTransition(TicketStatus.IN_REVIEW, TicketStatus.DONE, List.of(TicketStatus.IN_PROGRESS)));
     }
+
+    @Test
+    void validateTransition_rejectsDoneToDone() {
+        // Rule 1 must fire before Rule 2 — DONE-immutable trumps same-status no-op.
+        // Phase 7's dependency wiring may call validateTransition(DONE, DONE, ...)
+        // and must not get a green light.
+        assertThrows(ConflictException.class,
+                () -> validator.validateTransition(TicketStatus.DONE, TicketStatus.DONE, List.of()));
+    }
 }

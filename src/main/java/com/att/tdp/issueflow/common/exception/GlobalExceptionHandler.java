@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> optimisticLock(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse("ticket was modified concurrently; reload and retry"));
+                .body(new ErrorResponse("resource was modified concurrently; reload and retry"));
     }
 
     @ExceptionHandler(NotFoundException.class)

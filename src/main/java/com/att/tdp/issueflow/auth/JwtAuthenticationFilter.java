@@ -70,13 +70,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String username = claims.getSubject();
             String role = claims.get("role", String.class);
+            // JWT numeric claims arrive as Integer or Long depending on size.
+            // Normalize via Number to avoid a ClassCastException on small ids.
+            Object uidClaim = claims.get("uid");
+            Long uid = uidClaim instanceof Number n ? n.longValue() : null;
             // Spring's hasRole("ADMIN") prepends "ROLE_" — store the prefixed form.
             List<SimpleGrantedAuthority> authorities = role == null
                     ? List.of()
                     : List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
+            AuthenticatedUser principal = new AuthenticatedUser(uid, username);
             UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
         } catch (JwtException ex) {
             // Bad signature / expired / wrong issuer / malformed — fall through

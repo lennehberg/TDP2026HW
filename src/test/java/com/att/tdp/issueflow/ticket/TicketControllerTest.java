@@ -255,4 +255,65 @@ class TicketControllerTest {
                 .content(body))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void update_status_TODO_to_IN_PROGRESS_returns200() throws Exception {
+        Long id = createTicket();
+        mockMvc.perform(patch("/tickets/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "status": "IN_PROGRESS" }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("IN_PROGRESS")));
+    }
+
+    @Test
+    void update_status_backward_returns400() throws Exception {
+        Long id = createTicket();
+        mockMvc.perform(patch("/tickets/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "status": "IN_PROGRESS" }
+                        """))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/tickets/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "status": "TODO" }
+                        """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void delete_softDeletesDoneTicket() throws Exception {
+        // Locks in the deliberate "DONE tickets are deletable" decision
+        // (DONE-immutable is about PATCH, not archival).
+        Long id = createTicket();
+        Ticket t = ticketRepository.findById(id).orElseThrow();
+        t.setStatus(TicketStatus.DONE);
+        ticketRepository.save(t);
+        em.flush();
+        em.clear();
+
+        mockMvc.perform(delete("/tickets/{id}", id))
+                .andExpect(status().isOk());
+
+        Ticket after = em.find(Ticket.class, id);
+        assertNotNull(after);
+        assertNotNull(after.getDeletedAt());
+    }
+
+    @Test
+    void update_status_null_returns400() throws Exception {
+        // Pins the manual null-rejection in applyStatus — JsonNullable.of(null)
+        // is "present-with-null", which is illegal for status (NOT NULL column).
+        Long id = createTicket();
+        mockMvc.perform(patch("/tickets/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "status": null }
+                        """))
+                .andExpect(status().isBadRequest());
+    }
 }
