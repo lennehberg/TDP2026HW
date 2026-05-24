@@ -1,28 +1,36 @@
 # AI Usage Log
 
-Per requirements §4.5: AI tooling was used during implementation. This file
-records which model, in what role, and for which phases.
+Per requirements §4.5. Tools used: **Claude Opus 4.7** in Cowork mode as
+planner/orchestrator(aka the overlord), and **Claude Code (CLI)** on the same model as the
+implementer. All generated code was reviewed and tested locally before
+commit.
 
-## Tools
+## Important prompts
 
-- **Claude Code (CLI)** running model **Claude Opus 4.7 (1M context)** — used
-  interactively for code generation, refactoring, test scaffolding, and as a
-  pair-programming partner on design decisions documented in `BUILD_PLAN.md`.
+- *"Let's start from the beginning. Go over the assignment requirements. make sure you understand them, mark down key information, useful things to know, where to learn more about resources that are mentioned, and remember what the overall goal is and what is required to implement it."*
+  Produced the initial `BUILD_PLAN.md` and the Java + Spring Boot choice
+  over the NestJS skeleton.
 
-## Phase 2 — Authentication (this commit set)
+- *"ok. we'll move into planning our approach to each step later. now i want some resources i can use to learn more about these subjects"*
 
-Used for:
+- *"Lets start designing [feature_name], with the goal of writing a detailed checklist for claude code and i to implement"* 
 
-- Scaffolding the `auth/` package layout (`JwtProperties`, `JwtService`,
-  `JwtAuthenticationFilter`, `AuthService`, `AuthController`, `RevokedToken`).
-- Writing the `SecurityFilterChain` configuration with the JWT filter
-  registered before `UsernamePasswordAuthenticationFilter`.
-- Writing the test suite (`JwtServiceTest`, `AuthControllerTest`) and the
-  `TestSecurityConfig` test bypass.
-- Drafting `run.md` and this file.
+- *"Implementation feedback for phase-N."* 
 
-Design decisions (logout strategy, package layout, audit enum vocabulary)
-were author-driven; the model implemented the chosen approach and surfaced
-trade-offs (e.g. stateless vs deny-list logout) when asked.
+- *"Phase 13 review and summary."*
 
-All generated code was reviewed and tested locally before commit.
+## Collaboration rule given to Claude Code
+
+Claude Code was instructed to operate as a *skeleton generator* with an
+*ask-before-interesting* rule:
+
+- **Write freely:** class files, signatures, imports, annotations, DTO
+  records, config plumbing, trivial bodies (mappers, one-line controller
+  pass-throughs, straightforward repo calls).
+- **Pause and ask first:** before any method body with genuinely
+  interesting logic — algorithms, validation, business rules, security
+  decisions. Propose the approach in 1–2 sentences and ask whether the
+  author wants to write it or have Claude Code draft it.
+
+Reason: the assignment is also a learning exercise; the author wanted
+hands-on time on the interesting decisions.
