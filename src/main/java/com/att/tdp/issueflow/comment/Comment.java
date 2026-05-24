@@ -22,13 +22,13 @@ import lombok.Setter;
  * {@link com.att.tdp.issueflow.ticket.Ticket}.
  * <p>
  * No soft-delete: §3.5 scopes soft-delete to Project and Ticket only.
- * Comments are hard-deleted. Phase 9's {@code Mention} child rows must
- * be cleaned up alongside (note for the Phase 9 author).
+ * Comments are hard-deleted; child {@link Mention} rows are removed
+ * explicitly by {@link CommentService#delete} (no JPA cascade since the
+ * association is by raw {@code commentId}, not {@code @OneToMany}).
  * <p>
- * Mentions: the response DTO carries a {@code mentionedUsers} slot from
- * day 1 to keep the wire shape stable, but Phase 5 always emits {@code []}.
- * Phase 9 parses {@code @username} tokens out of {@code content} and
- * populates the field.
+ * Mentions: the {@code mentionedUsers} slot on the response DTO is
+ * populated by parsing {@code @username} tokens out of {@code content}
+ * and matching them (case-insensitive) against {@code UserRepository}.
  * <p>
  * {@code ticketId} and {@code authorId} are raw {@code Long}s (no
  * {@code @ManyToOne}) to match the codebase convention; existence checks

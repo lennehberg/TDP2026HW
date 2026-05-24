@@ -15,7 +15,7 @@ import java.io.Writer;
 import java.util.List;
 
 /**
- * Phase 11 — streams a CSV of tickets for one project to the response writer.
+ * Streams a CSV of tickets for one project to the response writer.
  * <p>
  * Field order is pinned to the README contract:
  * {@code id, title, description, status, priority, type, assigneeId}.

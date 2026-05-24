@@ -10,10 +10,9 @@ import java.util.Optional;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
-    // Backs GET /tickets?projectId=:projectId. Phase 8 added
-    // @SQLRestriction("deleted_at IS NULL") on the Ticket entity so this
-    // finder (and every standard JpaRepository method) auto-filters
-    // soft-deleted rows.
+    // Backs GET /tickets?projectId=:projectId. @SQLRestriction on the
+    // Ticket entity makes this finder (and every standard JpaRepository
+    // method) auto-filter soft-deleted rows.
     List<Ticket> findAllByProjectId(Long projectId);
 
     /**
@@ -22,10 +21,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
      * for full entity hydration. An empty {@code ids} list yields an empty
      * result (Hibernate handles the empty IN gracefully — no syntax error).
      * <p>
-     * Phase 8 note: this is JPQL, so {@code @SQLRestriction} applies —
-     * soft-deleted blocker tickets are silently dropped from the result,
-     * which effectively unblocks their dependents. Documented in
-     * {@code run.md} as deliberate.
+     * Soft-delete interaction: this is JPQL, so {@code @SQLRestriction}
+     * applies — soft-deleted blocker tickets are silently dropped from
+     * the result, which effectively unblocks their dependents. Documented
+     * in {@code run.md} as deliberate.
      */
     @Query("SELECT t.status FROM Ticket t WHERE t.id IN :ids")
     List<TicketStatus> findStatusesByIdIn(@Param("ids") List<Long> ids);

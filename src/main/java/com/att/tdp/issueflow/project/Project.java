@@ -21,8 +21,8 @@ import java.time.Instant;
  * is deliberately omitted ({@code BaseEntity} carries no {@code @Version});
  * only Ticket and Comment opt in per the build plan.
  * <p>
- * Phase 8 added {@code @SQLRestriction("deleted_at IS NULL")} so every
- * standard {@code JpaRepository} query auto-filters soft-deleted rows.
+ * Soft delete: {@code @SQLRestriction("deleted_at IS NULL")} makes every
+ * standard {@code JpaRepository} query auto-filter soft-deleted rows.
  * Listings and restore of soft-deleted projects go through the native
  * {@code findAllDeleted} / {@code findByIdIncludingDeleted} finders on
  * {@link ProjectRepository}, which bypass the restriction.

@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * which auto-discovers Jackson {@code Module} beans. Without this bean,
  * {@code JsonNullable<T>} deserialization is silently broken and the
  * "field absent vs. field present null" distinction collapses — which
- * Phase 13's auto-escalation reset trigger depends on.
+ * the auto-escalation reset trigger on {@code PATCH /tickets/:id} depends on.
  */
 @Configuration
 @EnableJpaAuditing

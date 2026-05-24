@@ -43,7 +43,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity   // activates @PreAuthorize on Phase 8's ADMIN-only endpoints
+@EnableMethodSecurity   // activates @PreAuthorize on the ADMIN-only restore/list-deleted endpoints
 @RequiredArgsConstructor
 public class SecurityConfig {
 

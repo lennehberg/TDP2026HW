@@ -23,7 +23,9 @@ import java.util.UUID;
  *   <li>{@code sub} — username (login identifier)</li>
  *   <li>{@code uid} — numeric user id (lets us look up by id without a second DB hit)</li>
  *   <li>{@code role} — "ADMIN" or "DEVELOPER" (drives Spring authorities)</li>
- *   <li>{@code jti} — random UUID per token (revocation key for the deny-list, see Section 2)</li>
+ *   <li>{@code jti} — random UUID per token, used as the deny-list PK
+ *       by {@link RevokedTokenRepository} so logout can invalidate a still-
+ *       valid (signature + expiry) token</li>
  *   <li>{@code iat}/{@code exp}/{@code iss} — standard RFC 7519 claims</li>
  * </ul>
  */

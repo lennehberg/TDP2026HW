@@ -23,10 +23,9 @@ public class EscalationService {
     public void runEscalation() {
         Instant now = Instant.now();
 
-        // find tickets needing escalation:
-        // not DONE
-        // Due date is in the past
-        // (Optional) haven't been escalated in the last hour/day to avoid rapid fire bumps
+        // Candidates: not DONE, past dueDate, and not yet at the terminal
+        // state (CRITICAL + overdue). The query filters out the terminal
+        // case so we don't re-audit no-ops every tick.
         List<Ticket> candidates = ticketRepository.findEscalationCandidates(now);
 
         for (Ticket t: candidates) {

@@ -38,9 +38,9 @@ public class ProjectController {
         return projectService.list();
     }
 
-    // Phase 8 — declared before /{projectId} for readability; Spring's
-    // RequestMappingHandlerMapping prefers more specific paths but visual
-    // ordering makes the intent obvious.
+    // Declared before /{projectId} for readability; Spring's
+    // RequestMappingHandlerMapping prefers more specific paths regardless,
+    // but visual ordering keeps the soft-delete endpoints grouped.
     @GetMapping("/deleted")
     @PreAuthorize("hasRole('ADMIN')")
     public List<ProjectResponse> listDeleted() {

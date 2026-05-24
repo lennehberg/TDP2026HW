@@ -25,7 +25,8 @@ import lombok.Setter;
  * Invariants enforced at the service layer (not at the column level):
  * <ul>
  *   <li>{@code actor == SYSTEM} ⇒ {@code performedBy == null}. No sentinel
- *       "system user" id. Phases 12/13 must respect this.</li>
+ *       "system user" id. Auto-assign and auto-escalate both respect this
+ *       via {@link AuditService#recordSystemAction}.</li>
  *   <li>{@code action}/{@code entityType} are the pinned enum vocabularies
  *       ({@link AuditAction}, {@link EntityType}). No ad-hoc strings.</li>
  * </ul>

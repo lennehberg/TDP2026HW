@@ -29,8 +29,9 @@ public class TicketController {
         return ticketService.listByProject(projectId);
     }
 
-    // Phase 8 — declared before /{ticketId} for readability. projectId is
-    // required (mirrors GET /tickets); Spring binder yields 400 if absent.
+    // Declared before /{ticketId} for readability (handler-mapping precedence
+    // would prefer the more specific path either way). projectId is required
+    // — mirrors GET /tickets; the Spring binder yields 400 if absent.
     @GetMapping("/deleted")
     @PreAuthorize("hasRole('ADMIN')")
     public List<TicketResponse> listDeleted(@RequestParam Long projectId) {
