@@ -75,6 +75,16 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
+		<!-- Spring Security test support — Phase 8 ADMIN-only endpoint tests
+		     use SecurityMockMvcRequestPostProcessors.user(...) to attach an
+		     Authentication to the request. SecurityContextHolder.set(...) alone
+		     is not enough: SecurityContextHolderFilter clobbers it. Test scope only. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- JJWT (JWT issuing and parsing) — Phase 2 -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
@@ -107,6 +117,15 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.6.0</version>
+		</dependency>
+
+		<!-- JsonNullable<T> — distinguishes "field absent" from "field present and null"
+		     in PATCH bodies. Required by Phase 4's UpdateTicketRequest and Phase 13's
+		     auto-escalation reset rule (keys on whether `priority` was sent). -->
+		<dependency>
+			<groupId>org.openapitools</groupId>
+			<artifactId>jackson-databind-nullable</artifactId>
+			<version>0.2.6</version>
 		</dependency>
 	</dependencies>
 

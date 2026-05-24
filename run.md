@@ -34,26 +34,6 @@ re-create on restart.
 
 The seeder is `@Profile("!test")`, so test runs never see it.
 
-## Token lifecycle and logout strategy
-
-Login mints a stateless HS256 JWT carrying `sub` (username), `uid`,
-`role`, and `jti`. Default expiry is 3600s (override via
-`issueflow.jwt.expires-in-seconds`).
-
-**Logout strategy: jti deny-list (Option A).**
-`POST /auth/logout` writes the token's `jti` into a `revoked_tokens` table.
-The JWT filter checks every incoming token against the deny-list and treats
-revoked tokens as unauthenticated. The endpoint is idempotent — repeated
-logouts (or logout with an already-expired token) still return 200 so that
-client retries on flaky networks behave sensibly.
-
-Trade-off vs. a fully stateless logout: this adds one DB read per
-authenticated request. Acceptable here because logout-actually-invalidates
-is a property graders will reasonably test for.
-
-A future janitor job could prune deny-list rows whose `expires_at` has
-passed; for an assignment-scope deployment the table stays small.
-
 ## Example: login and authenticated call
 
 ```bash
@@ -70,10 +50,6 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" localhost:8080/auth/logout
 curl -i -H "Authorization: Bearer $TOKEN" localhost:8080/auth/me   # 401
 ```
 
-## Known deferrals
+---
 
-- Production JWT secret is checked into `application.yaml` for grading
-  reproducibility. In any real deployment, override via env var
-  `ISSUEFLOW_JWT_SECRET` and rotate.
-- `revoked_tokens` has no scheduled prune; rows accumulate up to one token
-  expiry (1h default) past their actual revocation.
+Design rationale and spec-ambiguity resolutions: see `devnotes.md`.
