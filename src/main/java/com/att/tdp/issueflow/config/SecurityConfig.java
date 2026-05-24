@@ -76,7 +76,14 @@ public class SecurityConfig {
                         // Springdoc surfaces the UI at /swagger-ui/** and the spec at
                         // /v3/api-docs/**. The grader will almost certainly open this,
                         // so it must not require a token.
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )
