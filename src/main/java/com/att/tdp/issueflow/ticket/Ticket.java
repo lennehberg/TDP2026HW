@@ -27,19 +27,20 @@ import java.time.Instant;
  * {@code ObjectOptimisticLockingFailureException}, which the global handler
  * maps to 409 Conflict.
  * <p>
- * Phase 8 added {@code @SQLRestriction("deleted_at IS NULL")} so every
- * standard {@code JpaRepository} query auto-filters soft-deleted rows.
- * Listings and restore of soft-deleted tickets go through the native
+ * Soft delete: {@code @SQLRestriction("deleted_at IS NULL")} makes every
+ * standard {@code JpaRepository} query auto-filter soft-deleted rows.
+ * Listings and restore go through the native
  * {@code findAllDeletedByProjectId} / {@code findByIdIncludingDeleted}
  * finders on {@link TicketRepository}, which bypass the restriction.
- * Notable downstream effect: the Phase 7 blocker-status fetch silently
- * drops soft-deleted blockers, so a soft-deleted blocker effectively
- * unblocks its dependent (correct per spec; documented in {@code run.md}).
+ * Notable downstream effect: the blocker-status fetch in
+ * {@code TicketService.blockerStatuses} silently drops soft-deleted
+ * blockers, so a soft-deleted blocker effectively unblocks its dependent
+ * (intentional; documented in {@code run.md}).
  * <p>
- * {@code isOverdue} is owned by the Phase 13 scheduler (sets it,
+ * {@code isOverdue} is owned by {@link EscalationService} (sets it,
  * actor=SYSTEM) and the manual {@code priority} PATCH path (clears it,
- * actor=USER). Status changes never touch it. Phase 4 writes it exactly
- * once: {@code false} on create.
+ * actor=USER). Status changes never touch it; {@code create} writes it
+ * exactly once as {@code false}.
  * <p>
  * {@code projectId} and {@code assigneeId} are raw {@code Long}s (no
  * {@code @ManyToOne}) to match the codebase convention; existence checks

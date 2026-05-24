@@ -26,16 +26,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Phase 11 — CSV import with partial-success semantics.
+ * CSV import with partial-success semantics.
  * <p>
  * Each row is converted to a {@link CreateTicketRequest} and handed to
  * {@link TicketService#create(CreateTicketRequest)}, which already encapsulates
- * the full create path (validation, audit, and Phase 12 auto-assign).
+ * the full create path (validation, audit, and auto-assign).
  * <p>
  * <b>Auto-assign on import is intentional.</b> Rows with a blank
  * {@code assigneeId} column ride the same code path as
  * {@code POST /tickets} with {@code assigneeId == null} — they get
- * auto-assigned to the lowest-workload DEVELOPER and produce an
+ * auto-assigned to the DEVELOPER in the project with the fewest non-DONE
+ * tickets (tie-break: oldest {@code createdAt}) and produce an
  * {@code AUTO_ASSIGN} audit row. The spec doesn't carve out CSV from §3.8;
  * if you want to import unassigned tickets, that's the bulk equivalent of
  * "create N tickets without an assignee," which is exactly the trigger

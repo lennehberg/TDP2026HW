@@ -19,24 +19,21 @@ import java.util.List;
 /**
  * Manages "blocked by" relationships between tickets.
  * <p>
- * Phase 7 invariants the bodies below must honor (see PHASE_7_CHECKLIST §4):
+ * Invariants enforced in {@link #add}:
  * <ul>
  *   <li>A ticket cannot depend on itself ({@code ticketId == blockedBy} → 400).</li>
  *   <li>Both tickets must exist; unknown dependent in the URL → 404, unknown
  *       blocker in the body → 400.</li>
  *   <li>Both tickets must be in the <em>same project</em> (PDF §3.2) → 400.</li>
- *   <li>Duplicate {@code (ticketId, blockedById)} pair → 409. DB unique
+ *   <li>Duplicate {@code (ticketId, blockedById)} pair → 409. The DB unique
  *       constraint is the safety net for the race window.</li>
- *   <li>Cycle detection: BFS from {@code blockedBy} following "blocked by"
- *       edges; reject if {@code ticketId} is reachable → 409. Bounded walk
- *       to defend against pathological graphs. Document the choice (or its
- *       omission) in {@code run.md}.</li>
  *   <li>Audit: {@code AuditAction.CREATE}/{@code DELETE},
  *       {@code EntityType.DEPENDENCY}, {@code entityId = join row id}.</li>
  *   <li>Reads never audit.</li>
  * </ul>
- * The corresponding DONE-transition guard wiring lives in
- * {@link TicketService#applyStatus} — not here.
+ * Cycle detection is intentionally omitted (see {@code run.md}). The DONE-
+ * transition guard that uses these relationships lives in
+ * {@code TicketService.applyStatus} — not here.
  */
 @Service
 @RequiredArgsConstructor
@@ -48,7 +45,7 @@ public class TicketDependencyService {
 
     @Transactional
     public void add(Long ticketId, AddDependencyRequest req) {
-        // check if blocking ticket and blocked ticket exists
+        // Dependent missing → 404 (URL path); blocker missing → 400 (body field).
         Ticket dependent = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("ticket " + ticketId + " not found"));
         Ticket blocker = ticketRepository.findById(req.blockedBy())

@@ -7,9 +7,8 @@ public record CommentResponse(
         Long ticketId,
         Long authorId,
         String content,
-        // Phase 5: deliberately always empty.
-        // Phase 9: populated by parsing @username tokens from content and
-        //          joining against UserRepository (case-insensitive).
+        // Populated by parsing @username tokens from content and joining
+        // against UserRepository (case-insensitive); never null, may be empty.
         List<MentionedUserDto> mentionedUsers
 ) {
 }

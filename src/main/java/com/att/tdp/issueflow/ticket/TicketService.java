@@ -35,7 +35,8 @@ public class TicketService {
     private final TicketDependencyRepository dependencyRepository;
 
     /**
-     * Phase 12 — auto-assign per §3.8.
+     * Auto-assign per §3.8. Fires on create when {@code assigneeId == null}
+     * (never on update).
      * <p>
      * Scope: <i>any</i> DEVELOPER in the system, scored by their non-DONE
      * workload <i>in this project</i>. The data model has no concept of
@@ -123,12 +124,12 @@ public class TicketService {
     }
 
     private void applyPriority(Ticket t, JsonNullable<Priority> priority) {
-        // Per CLAUDE.md: the Phase 13 reset rule keys on whether `priority` was
-        // SENT, not whether its value changed. A PATCH that re-asserts the
-        // current priority still clears isOverdue and bumps the manual-change
+        // The auto-escalation reset keys on whether `priority` was SENT,
+        // not whether its value changed. A PATCH that re-asserts the current
+        // priority still clears isOverdue and bumps the manual-change
         // timestamp — that's the user's signal that they're re-owning the
         // priority, and the next escalation cycle should re-evaluate from
-        // there.
+        // there. (CLAUDE.md, PATCH semantics.)
         if (priority.isPresent()) {
             if (priority.get() == null) {
                 throw new BadRequestException("Priority cannot be null");
@@ -231,7 +232,7 @@ public class TicketService {
     public void delete(Long id) {
         Ticket t = ticketRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("ticket " + id + " not found"));
-        // Soft delete only — Phase 8 wires @SQLRestriction so standard
+        // Soft delete only — @SQLRestriction on the entity makes standard
         // queries auto-filter. DONE tickets ARE deletable (spec doesn't
         // forbid archiving completed work; DONE-immutable is about PATCH).
         t.setDeletedAt(Instant.now());
@@ -239,9 +240,10 @@ public class TicketService {
     }
 
     /**
-     * Phase 8: ADMIN-only listing of soft-deleted tickets within a project.
-     * Mirrors {@link #listByProject} in returning {@code []} for an unknown
-     * project (no pre-check).
+     * ADMIN-only listing of soft-deleted tickets within a project. Mirrors
+     * {@link #listByProject} in returning {@code []} for an unknown project
+     * (no pre-check). Native query in the repository bypasses
+     * {@code @SQLRestriction}.
      */
     @Transactional(readOnly = true)
     public List<TicketResponse> listDeletedByProject(Long projectId) {
@@ -251,11 +253,11 @@ public class TicketService {
     }
 
     /**
-     * Phase 8: clears {@code deletedAt} and audits a {@code RESTORE} row.
-     * Does NOT validate that the parent project is still live — a ticket
-     * can be restored even if its project is soft-deleted (the restored
-     * ticket will reference a project hidden from standard finders, but
-     * the audit chain stays consistent). Trade-off documented in
+     * Clears {@code deletedAt} and audits a {@code RESTORE} row. Does NOT
+     * validate that the parent project is still live — a ticket can be
+     * restored even if its project is soft-deleted (the restored ticket
+     * will reference a project hidden from standard finders, but the
+     * audit chain stays consistent). Trade-off documented in
      * {@code run.md} as the chosen §4d-(a) variant.
      */
     @Transactional

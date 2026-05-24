@@ -39,7 +39,8 @@ public record CreateTicketRequest(
         @NotNull
         Long projectId,
 
-        // Optional — Phase 12 will auto-assign when null.
+        // Optional — auto-assigned (in TicketService.create) to the DEVELOPER
+        // in the project with the fewest non-DONE tickets if left null.
         Long assigneeId,
 
         // Optional per §3.7.

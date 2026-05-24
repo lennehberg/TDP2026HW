@@ -96,16 +96,17 @@ public class ProjectService {
     public void delete(Long id) {
         Project p = projectRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("project " + id + " not found"));
-        // Soft delete only — still recorded as DELETE per BUILD_PLAN Phase 6
-        // ("delete is a soft delete, still DELETE"). Phase 8's restore endpoint
-        // will use AuditAction.RESTORE.
+        // Soft delete: visibility is cleared via @SQLRestriction on the entity,
+        // but the audit row is still AuditAction.DELETE (restore() is the only
+        // path that records RESTORE).
         p.setDeletedAt(Instant.now());
         auditService.recordUserAction(AuditAction.DELETE, EntityType.PROJECT, id);
     }
 
     /**
-     * Phase 8: ADMIN-only listing of soft-deleted projects. Native query
-     * bypasses {@code @SQLRestriction}. No audit (read-only).
+     * ADMIN-only listing of soft-deleted projects. The repository uses a
+     * native query so {@code @SQLRestriction} on the entity is bypassed.
+     * Reads are never audited.
      */
     @Transactional(readOnly = true)
     public List<ProjectResponse> listDeleted() {
@@ -113,11 +114,10 @@ public class ProjectService {
     }
 
     /**
-     * Phase 8: clears {@code deletedAt} and audits a {@code RESTORE} row.
-     * Loads via the bypass finder since {@code findById} can no longer see
-     * soft-deleted rows. Restoring a project does NOT cascade to its
-     * tickets (each ticket is restored independently) — documented in
-     * {@code run.md}.
+     * Clears {@code deletedAt} and audits a {@code RESTORE} row. Loads via
+     * the bypass finder since {@code findById} can no longer see soft-deleted
+     * rows. Restoring a project does NOT cascade to its tickets (each ticket
+     * is restored independently) — documented in {@code run.md}.
      */
     @Transactional
     public ProjectResponse restore(Long id) {

@@ -13,8 +13,9 @@ import java.util.List;
  * uses {@link Enum#ordinal()}. Reordering the enum will silently break this
  * validator.
  * <p>
- * The third parameter ({@code blockerStatuses}) is empty in Phase 4 and gets
- * populated by Phase 7's dependency wiring without changing the signature.
+ * The {@code blockerStatuses} parameter exists so dependency-aware callers
+ * (see {@code TicketService.blockerStatuses}) can wire blocker info in
+ * without changing this signature. Callers that don't care pass {@code []}.
  */
 @Component
 public class TicketStatusValidator {
@@ -22,7 +23,8 @@ public class TicketStatusValidator {
     /**
      * @param current          the ticket's current status (loaded from DB)
      * @param next             the requested next status
-     * @param blockerStatuses  statuses of every "blocked-by" ticket; empty in Phase 4
+     * @param blockerStatuses  statuses of every "blocked-by" ticket; pass {@code []}
+     *                         when the caller doesn't track dependencies
      */
     public void validateTransition(
             TicketStatus current,
@@ -30,9 +32,9 @@ public class TicketStatusValidator {
             List<TicketStatus> blockerStatuses
     ) {
         // Rule 1: never green-light any transition from DONE — even DONE → DONE.
-        // DONE-immutable is enforced upstream in TicketService.update, but the
-        // validator stays airtight so future callers (Phase 7 dependency wiring)
-        // can rely on it as a single source of truth.
+        // DONE-immutable is also enforced upstream in TicketService.update,
+        // but the validator stays airtight so every caller (incl. dependency
+        // wiring) can rely on it as a single source of truth.
         if (current == TicketStatus.DONE) {
             throw new ConflictException("ticket is DONE and cannot be modified");
         }
@@ -45,8 +47,8 @@ public class TicketStatusValidator {
             throw new BadRequestException(
                     "status cannot move backward: " + current + " → " + next);
         }
-        // Rule 4: DONE requires every blocker to be DONE (Phase 7 lights this up;
-        // blockerStatuses is always empty in Phase 4).
+        // Rule 4: DONE requires every blocker to be DONE. If the caller didn't
+        // pass blocker info, the list is empty and the check vacuously passes.
         if (next == TicketStatus.DONE
                 && !blockerStatuses.stream().allMatch(s -> s == TicketStatus.DONE)) {
             throw new ConflictException(

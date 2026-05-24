@@ -13,7 +13,7 @@ import java.time.Instant;
  * PATCH /tickets/:id body. Every mutable field is wrapped in
  * {@link JsonNullable} so the service can distinguish "field absent from
  * JSON" (leave value untouched) from "field present and explicitly null"
- * (clear / unassign). Phase 13's auto-escalation reset rule keys on
+ * (clear / unassign). The auto-escalation reset rule keys on
  * {@code priority().isPresent()}, not on the value — uniform wrapping
  * makes that trigger trivial.
  * <p>
