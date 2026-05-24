@@ -51,5 +51,3 @@ curl -i -H "Authorization: Bearer $TOKEN" localhost:8080/auth/me   # 401
 ```
 
 ---
-
-Design rationale and spec-ambiguity resolutions: see `devnotes.md`.
