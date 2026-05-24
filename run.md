@@ -13,7 +13,6 @@ docker compose up -d                # Postgres on :5432 (issueflow / issueflow /
 ./mvnw test                         # run all tests (H2 in-memory; no Postgres needed)
 ```
 
-Swagger UI is at <http://localhost:8080/swagger-ui.html>; OpenAPI JSON at <http://localhost:8080/v3/api-docs>.
 
 ## Demo ADMIN credentials
 
